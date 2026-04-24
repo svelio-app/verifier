@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Verify — Svelio integrity proofs</title>
+  <meta name="description" content="Strumento open-source per verificare in locale un pacchetto di prove di integrità Svelio (manifest SHA-256, Merkle root, OpenTimestamps, FreeTSA RFC 3161)." />
+  <meta name="theme-color" content="#2563EB" />
+  <meta name="robots" content="index,follow" />
+  <meta name="referrer" content="no-referrer" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://mempool.space https://blockstream.info; form-action 'none'; frame-ancestors 'none'; base-uri 'self'" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="https://svelio.app" target="_blank" rel="noreferrer">
+      <svg class="logo" width="28" height="28" viewBox="0 0 32 32" fill="none" aria-label="Svelio">
+        <path d="M6 4 C6 2.9 6.9 2 8 2 L20 2 L28 10 L28 28 C28 29.1 27.1 30 26 30 L8 30 C6.9 30 6 29.1 6 28 Z" fill="#2563EB"/>
+        <path d="M20 2 L28 10 L22 10 C20.9 10 20 9.1 20 8 Z" fill="#0C1F3D" fill-opacity="0.85"/>
+        <circle cx="17" cy="20" r="5.5" fill="#fff"/>
+        <path d="M14.5 20 L16.3 21.8 L19.7 18.4" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="brand-wordmark">svelio</span>
+      <span class="brand-sep" aria-hidden="true">·</span>
+      <span class="brand-sub">verify</span>
+    </a>
+    <button type="button" id="open-tutorial" class="repo-link" aria-haspopup="dialog">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".8" fill="currentColor"/></svg>
+      Come verifico?
+    </button>
+    <a class="repo-link" href="https://github.com/svelio-app/verifier" target="_blank" rel="noreferrer">
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M12 .5A11.5 11.5 0 0 0 .5 12c0 5.08 3.29 9.39 7.86 10.91.57.1.78-.25.78-.55v-2.05c-3.2.7-3.87-1.37-3.87-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.17.08 1.78 1.2 1.78 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.09-.12-.29-.51-1.47.11-3.06 0 0 .97-.31 3.18 1.18a11.05 11.05 0 0 1 5.78 0c2.21-1.5 3.18-1.18 3.18-1.18.62 1.59.23 2.77.11 3.06.74.8 1.19 1.83 1.19 3.09 0 4.43-2.68 5.41-5.24 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.66.79.55A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5z"/></svg>
+      Codice sorgente
+    </a>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>Verifica offline di un sigillo Svelio</h1>
+      <p>
+        Questo strumento è <strong>open-source</strong> e gira <strong>interamente nel tuo browser</strong>:
+        nessuna informazione viene inviata a server esterni. Serve a confermare in modo
+        indipendente che un pacchetto di prove <code>svelio-prove-&lt;id&gt;-v&lt;n&gt;.zip</code>
+        è autentico e che i file consegnati non sono stati alterati dal momento del sigillo.
+      </p>
+      <p class="mono-note">
+        Una volta caricata questa pagina, puoi anche disconnetterti da internet: il resto
+        funziona offline.
+      </p>
+      <div class="flow-hint">
+        <span class="flow-step"><span class="flow-num">1</span> Carica il pacchetto .zip</span>
+        <span class="flow-sep" aria-hidden="true">→</span>
+        <span class="flow-step"><span class="flow-num">2</span> Trascina i tuoi file</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2><span class="step">1</span> Carica il pacchetto <code>.zip</code></h2>
+      <p class="lead">Trascina qui il pacchetto di prove.</p>
+      <label class="drop" id="drop-bundle">
+        <input type="file" id="file-bundle" accept=".zip,application/zip" hidden />
+        <div class="drop-icon" id="drop-bundle-icon">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+        </div>
+        <div class="drop-title" id="drop-bundle-title">Trascina il pacchetto .zip</div>
+        <div class="drop-sub">oppure clicca per selezionarlo</div>
+      </label>
+      <div id="bundle-error" class="alert err hidden"></div>
+      <div id="bundle-summary" class="hidden"></div>
+    </section>
+
+    <section class="card hidden" id="files-card">
+      <h2><span class="step">2</span> Carica i file da verificare</h2>
+      <p class="lead">Uno o più file (originali che hai ricevuto). Le loro impronte SHA-256 vengono calcolate in locale e confrontate con il manifest.</p>
+      <label class="drop" id="drop-files">
+        <input type="file" id="file-inputs" multiple hidden />
+        <div class="drop-icon">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+        </div>
+        <div class="drop-title" id="drop-files-title">Trascina uno o più file</div>
+        <div class="drop-sub">oppure clicca per selezionarli</div>
+      </label>
+      <ul id="file-results" class="results"></ul>
+    </section>
+
+    <section class="card hidden" id="root-card">
+      <h2><span class="step step-auto" aria-hidden="true">✓</span> Impronta complessiva verificata <span class="auto-badge">automatico</span></h2>
+      <p class="lead">Ricostruita in locale dagli SHA-256 del manifest secondo la specifica <code>svelio-integrity-v1</code> e confrontata con quella attesa.</p>
+      <details class="tech-details">
+        <summary>Mostra valori</summary>
+        <dl class="kv">
+          <dt>Attesa (dal manifest)</dt>
+          <dd><code id="root-expected" class="mono break"></code></dd>
+          <dt>Ricalcolata in locale</dt>
+          <dd><code id="root-computed" class="mono break"></code></dd>
+        </dl>
+      </details>
+      <div id="root-verdict" class="verdict"></div>
+    </section>
+
+    <section class="card">
+      <h2><span class="step step-auto" aria-hidden="true">⚡</span> Verifica da riga di comando <span class="auto-badge">controprova</span></h2>
+      <p class="lead">Questo verificatore controlla anche il legame Bitcoin (OTS) e la marca RFC 3161 (TSR) in-browser. Se vuoi una contro-verifica con strumenti open-source indipendenti — utile in sede legale — qui trovi i comandi:</p>
+      <div class="cli">
+        <div class="cli-row">
+          <div class="cli-label">OpenTimestamps (Bitcoin)</div>
+          <pre><code>ots verify ots.bin --target manifest.json</code></pre>
+          <div class="cli-hint">Installa <code>opentimestamps-client</code> (<a href="https://github.com/opentimestamps/opentimestamps-client" target="_blank" rel="noreferrer">GitHub</a>).</div>
+        </div>
+        <div class="cli-row">
+          <div class="cli-label">FreeTSA (RFC 3161)</div>
+          <pre><code>openssl ts -verify -data manifest.json -in tsr.bin \
+  -CAfile freetsa-root-ca.pem</code></pre>
+          <div class="cli-hint">Certificato radice: <a href="https://freetsa.org" target="_blank" rel="noreferrer">freetsa.org</a>.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card legal">
+      <h2>Come funziona la verifica</h2>
+      <ol>
+        <li><strong>Impronta del file</strong>: ogni file ha un SHA-256 univoco. Se anche un solo byte cambia, l&apos;impronta cambia completamente.</li>
+        <li><strong>Impronta complessiva (Merkle root)</strong>: tutti gli SHA-256 vengono ordinati e combinati a coppie con SHA-256 fino a un solo valore. Questo è ciò che viene registrato su Bitcoin e firmato da FreeTSA.</li>
+        <li><strong>Ancoraggio Bitcoin</strong> (OpenTimestamps): la root viene scritta in una transazione Bitcoin. Una volta confermata, nessuno può retrodatarla o alterarla.</li>
+        <li><strong>Marca temporale RFC 3161</strong> (FreeTSA): una TSA indipendente firma la root con certificato X.509. Ammissibile come prova in giudizio ai sensi dell&apos;art. 41 Reg. UE 910/2014 (eIDAS), recepito in Italia dal Codice dell&apos;Amministrazione Digitale.</li>
+      </ol>
+      <p class="small">
+        Questo verificatore <em>non</em> conosce la piattaforma Svelio e non si collega ai suoi server.
+        Legge soltanto i file standard prodotti dal sigillo e applica operazioni crittografiche
+        native del browser. Il codice è pubblico e ispezionabile.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <div>© Svelio — Verificatore rilasciato con licenza MIT.</div>
+    <div>
+      <a href="https://github.com/svelio-app/verifier" target="_blank" rel="noreferrer">GitHub</a> ·
+      <a href="https://svelio.app" target="_blank" rel="noreferrer">svelio.app</a>
+    </div>
+  </footer>
+
+  <!-- Tutorial modal — shown on first visit (localStorage flag) and on demand
+       via the "Come verifico?" button. Vanilla JS + CSS only, CSP-strict. -->
+  <div id="tutorial-root" class="tutorial-root" hidden aria-hidden="true">
+    <div class="tutorial-backdrop" data-tutorial-close></div>
+    <div class="tutorial-modal" role="dialog" aria-modal="true" aria-labelledby="tutorial-title">
+      <button type="button" class="tutorial-close" aria-label="Chiudi" data-tutorial-close>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+
+      <div class="tutorial-head">
+        <div class="tutorial-dots" role="tablist" aria-label="Progresso">
+          <button type="button" class="tutorial-dot" data-step="1" aria-label="Passo 1 di 5"></button>
+          <button type="button" class="tutorial-dot" data-step="2" aria-label="Passo 2 di 5"></button>
+          <button type="button" class="tutorial-dot" data-step="3" aria-label="Passo 3 di 5"></button>
+          <button type="button" class="tutorial-dot" data-step="4" aria-label="Passo 4 di 5"></button>
+          <button type="button" class="tutorial-dot" data-step="5" aria-label="Passo 5 di 5"></button>
+        </div>
+        <div class="tutorial-step-label" id="tutorial-step-label">Passo 1 di 5</div>
+      </div>
+
+      <div class="tutorial-slides">
+        <section class="tutorial-slide" data-slide="1">
+          <div class="tutorial-illus tutorial-illus-1" aria-hidden="true">
+            <svg viewBox="0 0 400 200" preserveAspectRatio="xMidYMid meet">
+              <rect class="t1-file" x="110" y="25" width="180" height="150" rx="10" fill="#fff" stroke="#E2E8F0" stroke-width="1.5"/>
+              <rect x="128" y="45" width="120" height="6" rx="3" fill="#E2E8F0"/>
+              <rect x="128" y="58" width="90" height="6" rx="3" fill="#E2E8F0"/>
+              <rect x="128" y="71" width="110" height="6" rx="3" fill="#E2E8F0"/>
+              <g class="t1-shield">
+                <circle cx="200" cy="125" r="40" fill="#fff" stroke="#EFF6FF" stroke-width="5"/>
+                <path d="M200 96 L228 106 L228 130 C228 148 215 159 200 163 C185 159 172 148 172 130 L172 106 Z" fill="#EFF6FF" stroke="#2563EB" stroke-width="2.5"/>
+                <path class="t1-check" d="M187 128 L197 138 L214 118" fill="none" stroke="#2563EB" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              </g>
+            </svg>
+          </div>
+          <h2 class="tutorial-title" id="tutorial-title">Perché questo certificato</h2>
+          <p class="tutorial-body">Hai ricevuto file protetti da un sigillo digitale. Il certificato dimostra — senza bisogno di fidarti di noi — che i file sono originali e datati al momento della consegna.</p>
+        </section>
+
+        <section class="tutorial-slide" data-slide="2" hidden>
+          <div class="tutorial-illus tutorial-illus-2" aria-hidden="true">
+            <svg viewBox="0 0 400 200" preserveAspectRatio="xMidYMid meet">
+              <rect x="40" y="55" width="90" height="110" rx="8" fill="#fff" stroke="#E2E8F0" stroke-width="1.5"/>
+              <rect x="52" y="72" width="60" height="5" rx="2" fill="#CBD5E1"/>
+              <rect x="52" y="85" width="45" height="5" rx="2" fill="#CBD5E1"/>
+              <rect class="t2-flicker" x="52" y="98" width="55" height="5" rx="2" fill="#CBD5E1"/>
+              <rect x="52" y="111" width="40" height="5" rx="2" fill="#CBD5E1"/>
+              <line x1="140" y1="110" x2="180" y2="110" stroke="#94A3B8" stroke-width="2"/>
+              <polygon points="180,110 174,106 174,114" fill="#94A3B8"/>
+              <rect x="190" y="80" width="180" height="60" rx="10" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1.5"/>
+              <text x="280" y="102" text-anchor="middle" font-size="9" fill="#64748B" font-family="ui-monospace, Menlo">SHA-256</text>
+              <text x="280" y="122" text-anchor="middle" font-size="11" fill="#1E293B" font-family="ui-monospace, Menlo">a<tspan class="t2-char">b</tspan>c123de4f09786</text>
+            </svg>
+          </div>
+          <h2 class="tutorial-title">L'impronta digitale</h2>
+          <p class="tutorial-body">Ogni file ha un codice univoco di 64 caratteri (SHA-256). Se anche un solo byte cambia, il codice cambia completamente. È un'impronta digitale: non può essere imitata.</p>
+        </section>
+
+        <section class="tutorial-slide" data-slide="3" hidden>
+          <div class="tutorial-illus tutorial-illus-3" aria-hidden="true">
+            <svg viewBox="0 0 400 200" preserveAspectRatio="xMidYMid meet">
+              <rect x="28" y="30" width="200" height="140" rx="12" fill="#fff" stroke="#E2E8F0" stroke-width="1.5"/>
+              <rect x="28" y="30" width="200" height="28" fill="#F1F5F9"/>
+              <circle cx="44" cy="44" r="3.5" fill="#FDA4AF"/>
+              <circle cx="56" cy="44" r="3.5" fill="#FDE68A"/>
+              <circle cx="68" cy="44" r="3.5" fill="#BBF7D0"/>
+              <rect x="86" y="37" width="130" height="14" rx="7" fill="#E2E8F0"/>
+              <rect x="105" y="78" width="70" height="82" rx="8" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1.5"/>
+              <rect x="117" y="96" width="46" height="4" rx="2" fill="#BFDBFE"/>
+              <rect x="117" y="108" width="36" height="4" rx="2" fill="#BFDBFE"/>
+              <rect x="117" y="120" width="40" height="4" rx="2" fill="#BFDBFE"/>
+              <g transform="translate(152 132)">
+                <circle cx="8" cy="8" r="12" fill="#2563EB"/>
+                <rect x="3" y="8" width="10" height="8" rx="1.5" fill="#fff"/>
+                <path d="M5 8 V6 a3 3 0 0 1 6 0 V8" fill="none" stroke="#fff" stroke-width="1.5"/>
+              </g>
+              <line x1="232" y1="100" x2="266" y2="100" stroke="#94A3B8" stroke-width="2" stroke-dasharray="4 4"/>
+              <g opacity="0.5">
+                <rect x="314" y="58" width="60" height="84" rx="6" fill="#E2E8F0" stroke="#CBD5E1" stroke-width="1.5"/>
+                <rect x="320" y="66" width="48" height="14" rx="2" fill="#fff" stroke="#CBD5E1" stroke-width="1"/>
+                <circle cx="364" cy="73" r="2" fill="#16A34A"/>
+                <rect x="320" y="84" width="48" height="14" rx="2" fill="#fff" stroke="#CBD5E1" stroke-width="1"/>
+                <circle cx="364" cy="91" r="2" fill="#16A34A"/>
+                <rect x="320" y="102" width="48" height="14" rx="2" fill="#fff" stroke="#CBD5E1" stroke-width="1"/>
+                <circle cx="364" cy="109" r="2" fill="#16A34A"/>
+                <rect x="320" y="120" width="48" height="14" rx="2" fill="#fff" stroke="#CBD5E1" stroke-width="1"/>
+                <circle cx="364" cy="127" r="2" fill="#16A34A"/>
+                <text x="344" y="158" text-anchor="middle" font-size="9" fill="#94A3B8">server</text>
+              </g>
+              <g class="t3-no">
+                <circle cx="286" cy="100" r="18" fill="#FEE2E2" stroke="#DC2626" stroke-width="2.5"/>
+                <line x1="275" y1="89" x2="297" y2="111" stroke="#DC2626" stroke-width="2.5" stroke-linecap="round"/>
+              </g>
+            </svg>
+          </div>
+          <h2 class="tutorial-title">La verifica è tutta in locale</h2>
+          <p class="tutorial-body">Quando trascini un file nella drop-zone, il browser calcola l'impronta direttamente sul tuo dispositivo. I tuoi file non vengono mai inviati a Svelio né a nessun altro server.</p>
+        </section>
+
+        <section class="tutorial-slide" data-slide="4" hidden>
+          <div class="tutorial-illus tutorial-illus-4" aria-hidden="true">
+            <svg viewBox="0 0 400 200" preserveAspectRatio="xMidYMid meet">
+              <rect x="175" y="80" width="50" height="60" rx="5" fill="#fff" stroke="#CBD5E1" stroke-width="1.5"/>
+              <rect x="182" y="92" width="36" height="3" rx="1.5" fill="#CBD5E1"/>
+              <rect x="182" y="100" width="28" height="3" rx="1.5" fill="#CBD5E1"/>
+              <rect x="182" y="108" width="32" height="3" rx="1.5" fill="#CBD5E1"/>
+              <line x1="114" y1="110" x2="175" y2="110" stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="3 3"/>
+              <line x1="225" y1="110" x2="286" y2="110" stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="3 3"/>
+              <g class="t4-bitcoin">
+                <circle cx="80" cy="110" r="34" fill="#FEF3C7" stroke="#F59E0B" stroke-width="2"/>
+                <text x="80" y="119" text-anchor="middle" font-size="30" fill="#F59E0B" font-family="ui-monospace, Menlo" font-weight="700">₿</text>
+                <g class="t4-check-l">
+                  <circle cx="102" cy="85" r="10" fill="#16A34A"/>
+                  <path d="M97 85 L101 89 L107 82" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </g>
+                <text x="80" y="164" text-anchor="middle" font-size="10" fill="#475569" font-weight="600">OpenTimestamps</text>
+              </g>
+              <g class="t4-tsa">
+                <circle cx="320" cy="110" r="34" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+                <circle cx="320" cy="109" r="17" fill="#fff"/>
+                <path d="M316 110 L319 113 L325 106" fill="none" stroke="#16A34A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <g class="t4-check-r">
+                  <circle cx="342" cy="85" r="10" fill="#16A34A"/>
+                  <path d="M337 85 L341 89 L347 82" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </g>
+                <text x="320" y="164" text-anchor="middle" font-size="10" fill="#475569" font-weight="600">FreeTSA · RFC 3161</text>
+              </g>
+            </svg>
+          </div>
+          <h2 class="tutorial-title">Due testimoni indipendenti</h2>
+          <p class="tutorial-body">Il sigillo è ancorato a due servizi separati: <strong>OpenTimestamps</strong> lo registra su Bitcoin (immutabile, pubblicamente verificabile) e <strong>FreeTSA</strong> lo firma secondo lo standard RFC 3161 (ammissibile in giudizio ex art. 41 eIDAS).</p>
+        </section>
+
+        <section class="tutorial-slide" data-slide="5" hidden>
+          <div class="tutorial-illus tutorial-illus-5" aria-hidden="true">
+            <svg viewBox="0 0 400 200" preserveAspectRatio="xMidYMid meet">
+              <!-- Step 1: zip drop-zone -->
+              <g class="t5-zip">
+                <rect x="30" y="40" width="160" height="120" rx="12" fill="#EFF6FF" stroke="#2563EB" stroke-width="2" stroke-dasharray="6 5"/>
+                <circle cx="60" cy="70" r="13" fill="#2563EB"/>
+                <text x="60" y="75" text-anchor="middle" font-size="14" fill="#fff" font-weight="700">1</text>
+                <text x="110" y="75" text-anchor="middle" font-size="11" fill="#2563EB" font-weight="700">Pacchetto</text>
+                <g transform="translate(85 96)">
+                  <rect x="0" y="0" width="50" height="44" rx="5" fill="#fff" stroke="#2563EB" stroke-width="1.5"/>
+                  <text x="25" y="19" text-anchor="middle" font-size="9" fill="#2563EB" font-family="ui-monospace, Menlo" font-weight="700">.zip</text>
+                  <rect x="10" y="26" width="30" height="3" rx="1.5" fill="#BFDBFE"/>
+                  <rect x="10" y="33" width="22" height="3" rx="1.5" fill="#BFDBFE"/>
+                </g>
+              </g>
+
+              <!-- Arrow between steps -->
+              <path class="t5-arrow" d="M198 100 L212 100" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" marker-end="url(#t5-arrowhead)"/>
+              <defs>
+                <marker id="t5-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                  <path d="M0,0 L6,3 L0,6 Z" fill="#94A3B8"/>
+                </marker>
+              </defs>
+
+              <!-- Step 2: file drop-zone -->
+              <g class="t5-file">
+                <rect x="220" y="40" width="160" height="120" rx="12" fill="#DCFCE7" stroke="#16A34A" stroke-width="2" stroke-dasharray="6 5"/>
+                <circle cx="250" cy="70" r="13" fill="#16A34A"/>
+                <text x="250" y="75" text-anchor="middle" font-size="14" fill="#fff" font-weight="700">2</text>
+                <text x="310" y="75" text-anchor="middle" font-size="11" fill="#15803D" font-weight="700">I tuoi file</text>
+                <g transform="translate(275 94)">
+                  <rect x="0" y="0" width="50" height="50" rx="6" fill="#fff" stroke="#16A34A" stroke-width="1.5"/>
+                  <rect x="10" y="11" width="30" height="3" rx="1.5" fill="#BBF7D0"/>
+                  <rect x="10" y="20" width="22" height="3" rx="1.5" fill="#BBF7D0"/>
+                  <rect x="10" y="29" width="26" height="3" rx="1.5" fill="#BBF7D0"/>
+                </g>
+              </g>
+            </svg>
+          </div>
+          <h2 class="tutorial-title">Due passi, entrambi in locale</h2>
+          <p class="tutorial-body">Chiudi questa guida e segui i due passi sotto: prima trascina il <strong>pacchetto .zip</strong> che hai ricevuto, poi trascina i <strong>file che vuoi verificare</strong>. Il browser fa tutto, senza mandare nulla online.</p>
+        </section>
+      </div>
+
+      <div class="tutorial-nav">
+        <button type="button" class="tutorial-back" data-tutorial-prev disabled>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Indietro
+        </button>
+        <button type="button" class="tutorial-next" data-tutorial-next>
+          <span class="tutorial-next-label">Avanti</span>
+          <svg class="tutorial-next-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          <svg class="tutorial-next-check" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M20 6 L9 17 L4 12"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./verifier.js"></script>
+</body>
+</html>
